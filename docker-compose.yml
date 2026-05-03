@@ -1,0 +1,55 @@
+# KI-OS Stack — orchestriert Bot + Dashboard als ein Docker-Compose-Projekt.
+# Erwartet Layout:
+#   /opt/bot/         (geklontes julasim/KI_WIKI_OS)
+#   /opt/dashboard/   (geklontes julasim/KI_WIKI_Dashboard)
+#   /opt/ki-os/       (dieses Repo — orchestriert die anderen)
+#
+# Beide Services sind im UI als ein Projekt sichtbar (ki-os).
+# Bot schreibt in Vault, Dashboard liest read-only.
+
+name: ki-os
+
+services:
+  bot:
+    build: ../bot
+    container_name: ki-os-bot
+    restart: unless-stopped
+    env_file:
+      - ../bot/.env
+    environment:
+      - VAULT_PATH=/vault
+    volumes:
+      # Vault read-write für Bot
+      - /opt/vault/KI_WIKI_Vault:/vault
+      # Whisper-Modell-Cache (überlebt Container-Rebuilds)
+      - whisper-cache:/root/.cache/huggingface
+      # Lokaler Clone des GitHub-Backup-Repos (überlebt Restarts)
+      - vault-backup:/vault-backup
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  dashboard:
+    build: ../dashboard
+    container_name: ki-os-dashboard
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      # Vault READ-ONLY — Dashboard schreibt nichts
+      - /opt/vault/KI_WIKI_Vault:/vault:ro
+    environment:
+      - VAULT_PATH=/vault
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  whisper-cache:
+  vault-backup:

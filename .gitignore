@@ -1,0 +1,10 @@
+# OS / Editor
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Local logs / overrides
+*.log
+docker-compose.override.yml

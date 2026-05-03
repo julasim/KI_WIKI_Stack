@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# install.sh — KI-OS Stack Erst-Installation
+# Annahme: läuft in /opt/ki-os/ als root oder sudo
+# Vorbedingung: bot + dashboard wurden schon nach /opt/bot bzw. /opt/dashboard
+# geklont, /opt/bot/.env ist konfiguriert.
+#
+# Verwendung:
+#   cd /opt
+#   git clone https://github.com/julasim/KI_WIKI_OS.git bot
+#   git clone https://github.com/julasim/KI_WIKI_Dashboard.git dashboard
+#   git clone https://github.com/julasim/KI_OS_Stack.git ki-os
+#   cd /opt/bot && cp .env.example .env && nano .env  # Token + User-ID
+#   cd /opt/ki-os && bash install.sh
+
+set -euo pipefail
+cd "$(dirname "$0")"
+
+echo "═══════════════════════════════════════════════"
+echo "   KI-OS Stack — Erst-Installation"
+echo "═══════════════════════════════════════════════"
+echo
+
+# ── Pre-Checks ──
+[ -d ../bot ]       || { echo "❌ /opt/bot fehlt"; exit 1; }
+[ -d ../dashboard ] || { echo "❌ /opt/dashboard fehlt"; exit 1; }
+[ -f ../bot/.env ]  || { echo "❌ /opt/bot/.env fehlt — bitte konfigurieren"; exit 1; }
+
+# Vault-Pfad-Check
+VAULT_PATH="/opt/vault/KI_WIKI_Vault"
+if [ ! -d "$VAULT_PATH" ]; then
+    echo "⚠️  Vault unter $VAULT_PATH nicht gefunden."
+    echo "   Bot wird ihn beim ersten Start anlegen wenn das Volume gemountet wird."
+    echo "   Trotzdem fortfahren? [y/N]"
+    read -r ans
+    [[ "${ans,,}" == "y" ]] || exit 1
+fi
+
+# Docker-Check
+command -v docker >/dev/null 2>&1 || { echo "❌ Docker fehlt"; exit 1; }
+docker compose version >/dev/null 2>&1 || { echo "❌ docker compose plugin fehlt"; exit 1; }
+
+# ── Container bauen + starten ──
+echo "──── Container bauen (kann 2-5 Min dauern) ────"
+docker compose build
+
+echo
+echo "──── Starten ────"
+docker compose up -d
+
+echo
+echo "──── Status ────"
+docker compose ps
+
+IP=$(hostname -I | awk '{print $1}')
+echo
+echo "✓ KI-OS Stack installiert."
+echo "  Bot:       läuft im Hintergrund, antwortet auf Telegram"
+echo "  Dashboard: http://$IP:3001"
+echo
+echo "Update später mit: cd /opt/ki-os && bash update.sh"
