@@ -13,9 +13,8 @@
 	}
 }
 
-# MCP-Server hinter HTTPS
-76-13-10-79.sslip.io {
-	# === Security-Headers (Premium-Hardening) ===
+# Gemeinsame Snippets (in Caddy v2 via Imports)
+(security_headers) {
 	header {
 		# HSTS: HTTPS-only für 1 Jahr, inkl. aller Subdomains
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -34,8 +33,9 @@
 		# X-Powered-By unterdrücken falls upstream gesetzt
 		-X-Powered-By
 	}
+}
 
-	# Alle Requests an den internen MCP-Container weiterreichen
+(mcp_proxy) {
 	reverse_proxy mcp:3002 {
 		# Streamable-HTTP braucht Long-lived Connections für SSE
 		flush_interval -1
@@ -43,8 +43,9 @@
 		header_up X-Forwarded-For {remote_host}
 		header_up X-Real-IP {remote_host}
 	}
+}
 
-	# Strukturierte Logs nach stdout (sieht man via `docker compose logs caddy`)
+(access_log) {
 	log {
 		output stdout
 		format console
@@ -52,7 +53,17 @@
 	}
 }
 
-# (Optional später) Dashboard auch hinter HTTPS:
-# dashboard.<vps-ip>.sslip.io {
-#     reverse_proxy dashboard:3000
-# }
+# === Production-Domain (premium) ===
+mcp.ki.wiki {
+	import security_headers
+	import mcp_proxy
+	import access_log
+}
+
+# === Fallback-Domain (sslip-IP-DNS, kein eigener Eintrag nötig) ===
+# Bleibt aktiv für Migrations-Phase. Später kann der Block gelöscht werden.
+76-13-10-79.sslip.io {
+	import security_headers
+	import mcp_proxy
+	import access_log
+}
