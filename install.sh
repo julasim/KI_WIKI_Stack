@@ -6,13 +6,15 @@
 #
 # Verwendung:
 #   cd /opt
+#   git clone https://github.com/julasim/Proxy.git proxy       # ZUERST!
 #   git clone https://github.com/julasim/KI_WIKI_OS.git bot
 #   git clone https://github.com/julasim/KI_WIKI_Dashboard.git dashboard
 #   git clone https://github.com/julasim/KI_WIKI_MCP.git mcp
 #   git clone https://github.com/julasim/KI_WIKI_Stack.git ki-os
 #   cd /opt/bot && cp .env.example .env && nano .env  # Token + User-ID
 #   cd /opt/mcp && cp .env.example .env && nano .env  # MCP_TOKEN setzen!
-#   cd /opt/ki-os && bash install.sh
+#   cd /opt/proxy && bash install.sh                  # Edge-Proxy starten (legt 'proxy'-Netz an)
+#   cd /opt/ki-os && bash install.sh                  # Bot + Dashboard + MCP starten
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -28,6 +30,16 @@ echo
 [ -d ../mcp ]       || { echo "❌ /opt/mcp fehlt"; exit 1; }
 [ -f ../bot/.env ]  || { echo "❌ /opt/bot/.env fehlt — bitte konfigurieren"; exit 1; }
 [ -f ../mcp/.env ]  || { echo "❌ /opt/mcp/.env fehlt — siehe /opt/mcp/.env.example"; exit 1; }
+
+# Externes proxy-Netzwerk muss existieren (vom Edge-Proxy-Stack erstellt)
+if ! docker network inspect proxy >/dev/null 2>&1; then
+    echo "❌ Docker-Netzwerk 'proxy' fehlt."
+    echo "   Bitte zuerst Edge-Proxy installieren:"
+    echo "     cd /opt && git clone https://github.com/julasim/Proxy.git proxy"
+    echo "     cd /opt/proxy && bash install.sh"
+    exit 1
+fi
+echo "✓ proxy-Netzwerk vorhanden"
 
 # Vault-Pfad-Check
 VAULT_PATH="/opt/vault/KI_WIKI_Vault"

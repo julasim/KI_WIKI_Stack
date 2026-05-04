@@ -1,12 +1,14 @@
 # KI-OS Stack
 
-Docker-Compose-Orchestrierung für **Bot + Dashboard** als ein Projekt.
+Docker-Compose-Orchestrierung für **Bot + Dashboard + MCP** als ein Projekt.
 
-Im Docker-UI (Coolify/Portainer/etc.) erscheint das als ein Projekt **`ki-os`** mit 2 Containern:
+Im Docker-UI erscheint das als ein Projekt **`ki-os`** mit 3 Containern:
 - `ki-os-bot` (Telegram-Bot)
-- `ki-os-dashboard` (Web-UI auf Port 5001)
+- `ki-os-dashboard` (Web-UI auf Port 5001 direct exposed)
+- `ki-os-mcp` (Vault-MCP-Server, intern; extern via Edge-Proxy)
 
-Beide Container sharen den gleichen Vault — Bot read-write, Dashboard read-only.
+Alle 3 Container teilen sich den gleichen Vault.
+Bot + MCP read-write, Dashboard read-only.
 
 ## Verwandte Repos
 
@@ -14,36 +16,61 @@ Beide Container sharen den gleichen Vault — Bot read-write, Dashboard read-onl
 |---|---|---|
 | [`KI_WIKI_OS`](https://github.com/julasim/KI_WIKI_OS) | `/opt/bot/` | Telegram-Bot (Python) |
 | [`KI_WIKI_Dashboard`](https://github.com/julasim/KI_WIKI_Dashboard) | `/opt/dashboard/` | Web-Dashboard (Next.js) |
-| [`KI_WIKI_MCP`](https://github.com/julasim/KI_WIKI_MCP) | `/opt/mcp/` | MCP-Server (Python, Vault-Tools für Claude Code) |
-| [`KI_WIKI_Stack`](https://github.com/julasim/KI_WIKI_Stack) ← du bist hier | `/opt/ki-os/` | Docker-Compose-Orchestrierung |
+| [`KI_WIKI_MCP`](https://github.com/julasim/KI_WIKI_MCP) | `/opt/mcp/` | MCP-Server (Vault-Tools für Claude Code) |
+| [`Proxy`](https://github.com/julasim/Proxy) | `/opt/proxy/` | **Edge-Reverse-Proxy** (Caddy für ALLE Apps am VPS) |
+| [`KI_WIKI_Stack`](https://github.com/julasim/KI_WIKI_Stack) ← du bist hier | `/opt/ki-os/` | Diese Compose-Orchestrierung |
+
+## Architektur
+
+```
+Internet
+   │
+   ▼ 80/443
+edge-caddy   (im /opt/proxy/-Stack — TLS, alle Domains zentral)
+   │
+   │  reverse_proxy via 'proxy' Docker-Netzwerk
+   │
+   ├─→ mcp.ki.wiki  →  ki-os-mcp:5002
+   │
+   ▼
+ki-os-mcp ───┐
+ki-os-bot ───┤── share /opt/vault/KI_WIKI_Vault/
+ki-os-dashboard (direct exposed :5001 für Lokalzugriff)
+```
 
 ## Erst-Installation (auf VPS, einmalig)
 
 ```bash
 cd /opt
 
-# 1. Alle 4 Repos klonen
+# 1. Alle 5 Repos klonen (Proxy ZUERST!)
+git clone https://github.com/julasim/Proxy.git proxy
 git clone https://github.com/julasim/KI_WIKI_OS.git bot
 git clone https://github.com/julasim/KI_WIKI_Dashboard.git dashboard
 git clone https://github.com/julasim/KI_WIKI_MCP.git mcp
 git clone https://github.com/julasim/KI_WIKI_Stack.git ki-os
 
-# 2. Bot-Konfig (.env)
+# 2. Bot-Konfig
 cd /opt/bot
 cp .env.example .env
-nano .env   # TG_TOKEN, ALLOWED_USER_ID, LLM_API_KEY etc. eintragen
+nano .env
 
-# 3. MCP-Konfig (.env mit Bearer-Token)
+# 3. MCP-Konfig
 cd /opt/mcp
 cp .env.example .env
-nano .env   # MCP_TOKEN setzen — generieren mit: python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+nano .env   # MCP_TOKEN setzen
 
-# 4. Stack starten
+# 4. Edge-Proxy ZUERST starten (legt 'proxy'-Netzwerk an)
+cd /opt/proxy
+bash install.sh
+
+# 5. KI-OS-Stack starten
 cd /opt/ki-os
 bash install.sh
 ```
 
 Dashboard ist danach erreichbar unter `http://<vps-ip>:5001`.
+MCP-Server unter `https://<deine-domain>/mcp/` (DNS muss auf VPS-IP zeigen).
 
 ## Update
 
@@ -52,113 +79,111 @@ cd /opt/ki-os
 bash update.sh
 ```
 
-`update.sh` macht automatisch:
-1. Verifiziert dass alle 4 Repos die richtigen Git-Origins haben (Schutz gegen versehentlichen Cross-Mount)
-2. Pullt Bot, Dashboard, MCP, Stack — meldet was sich geändert hat
-3. Wenn nichts neu: nichts tun
-4. Wenn neu: `docker compose up -d --build` mit Status-Output
+`update.sh` pulled bot/dashboard/mcp/stack und rebuildet wenn nötig.
+Edge-Proxy hat eigenes update via `cd /opt/proxy && bash update.sh`.
 
 ## Layout
 
 ```
 /opt/
+├── proxy/                  Proxy Repo (Edge-Caddy)
+│   ├── docker-compose.yml  ← startet edge-caddy
+│   └── Caddyfile           ← ALLE Domains zentral
+│
 ├── bot/                    KI_WIKI_OS Repo
-│   ├── ki_wiki_bot.py
-│   ├── Dockerfile
-│   ├── docker-compose.yml  ← obsolete im Stack-Setup, dient als Solo-Fallback
-│   └── .env                ← USER konfiguriert
-│
 ├── dashboard/              KI_WIKI_Dashboard Repo
-│   ├── app/                Next.js-App
-│   ├── Dockerfile
-│   └── docker-compose.yml  ← obsolete im Stack-Setup
-│
 ├── mcp/                    KI_WIKI_MCP Repo
-│   ├── ki_os_mcp/          MCP-Server (Streamable HTTP)
-│   ├── Dockerfile
-│   └── .env                ← USER konfiguriert (MCP_TOKEN)
 │
 ├── ki-os/                  KI_WIKI_Stack Repo (DAS HIER)
-│   ├── docker-compose.yml  ← orchestriert alles
+│   ├── docker-compose.yml  ← bot + dashboard + mcp (KEIN Caddy mehr)
 │   ├── install.sh
 │   ├── update.sh
 │   └── README.md
 │
+├── mcp-logs/               Persistent Audit-Log (vom MCP)
+├── mcp-snapshots/          Persistent Backup-Snapshots (vom MCP)
 └── vault/
-    └── KI_WIKI_Vault/      Markdown-Vault (read-write von Bot+MCP, read-only vom Dashboard)
+    └── KI_WIKI_Vault/      Markdown-Vault
 ```
 
 ## Container-Details
 
 ### `ki-os-bot`
 - Build: `../bot/Dockerfile`
-- Volumes:
-  - `/opt/vault/KI_WIKI_Vault:/vault` (read-write)
-  - `whisper-cache:/root/.cache/huggingface` (Whisper-Modell, persistent)
-  - `vault-backup:/vault-backup` (Git-Backup-Repo)
+- Volumes: `/opt/vault/KI_WIKI_Vault:/vault` (RW), whisper-cache, vault-backup
 - Env: aus `/opt/bot/.env`
-- Kein Port-Mapping (Telegram-Polling, kein HTTP)
+- Kein Port-Mapping (Telegram-Polling)
 
 ### `ki-os-dashboard`
 - Build: `../dashboard/Dockerfile`
-- Volumes:
-  - `/opt/vault/KI_WIKI_Vault:/vault:ro` (READ-ONLY)
-- Env: `VAULT_PATH=/vault`, `NODE_ENV=production`, `PORT=5000`
-- Port: `5001:5000`
+- Volumes: `/opt/vault/KI_WIKI_Vault:/vault:ro` (RO)
+- Env: `PORT=5000`, `HOSTNAME=0.0.0.0`, `NODE_ENV=production`
+- Port: `5001:5000` (direct exposed — kein Edge-Proxy für Dashboard)
+- Wenn TLS gewünscht: ins proxy-Netzwerk hängen + Caddyfile-Block ergänzen
 
 ### `ki-os-mcp`
 - Build: `../mcp/Dockerfile`
 - Volumes:
-  - `/opt/vault/KI_WIKI_Vault:/vault` (read-write)
-  - `/opt/mcp-logs:/var/log/mcp` (audit log)
-  - `/opt/mcp-snapshots:/snapshots` (backup snapshots)
-- Env: aus `/opt/mcp/.env` (`MCP_TOKEN`, `MCP_PORT=5002`)
-- Kein externer Port (nur intern via Caddy reverse-proxy)
-- Healthcheck: `/health`
+  - `/opt/vault/KI_WIKI_Vault:/vault` (RW)
+  - `/opt/mcp-logs:/var/log/mcp` (Audit-Log)
+  - `/opt/mcp-snapshots:/snapshots` (Backup-Snapshots)
+- Env: aus `/opt/mcp/.env`, `MCP_PORT=5002`
+- Kein externer Port — externe Calls ausschließlich via Edge-Caddy
+- Healthcheck: `http://localhost:5002/health`
+- **Im `proxy`-Netzwerk** für edge-caddy Reverse-Proxy
 
-### `ki-os-caddy`
-- Image: `caddy:2-alpine`
-- Container-intern: HTTP `5080`, HTTPS `5443` (Projekt-Konvention 5xxx)
-- Host-exposed: `80` + `443` (Standard-Web-Ports für TLS-Issuance + saubere URLs)
-- Holt automatisch Let's-Encrypt-Cert je Domain
-- Volumes: `caddy-data` (Certs), `caddy-config`
+## Edge-Proxy-Anbindung
 
-## Migration vom alten Setup
-
-Wenn du vorher Bot via `cd /opt/bot && bash update.sh` separat laufen hattest:
-
-```bash
-# Alten Bot-Container stoppen
-cd /opt/bot && docker compose down
-
-# Stack starten — übernimmt ab jetzt
-cd /opt/ki-os && bash install.sh
+MCP wird im `Caddyfile` des `/opt/proxy/`-Stacks referenziert:
+```
+mcp.ki.wiki {
+    reverse_proxy ki-os-mcp:5002
+    ...
+}
 ```
 
-Die alten `docker-compose.yml`-Files in `/opt/bot/` und `/opt/dashboard/` bleiben als Solo-Fallback liegen, werden aber nicht mehr aktiv genutzt.
+Container-Hostname in Caddyfile = `ki-os-mcp` (= container_name aus
+docker-compose.yml dieses Stacks).
 
-## Logs anschauen
+## Migration vom alten Setup (Caddy war früher hier)
+
+Falls du noch das alte Setup mit Caddy-im-ki-os-Stack hast:
 
 ```bash
+# 1. Edge-Proxy klonen + starten
+cd /opt && git clone https://github.com/julasim/Proxy.git proxy
+cd /opt/proxy && bash install.sh
+# (Caddy versucht 80/443 zu binden — kollidiert noch mit altem ki-os-caddy)
+
+# 2. Alten ki-os-caddy stoppen
 cd /opt/ki-os
+docker compose stop caddy
+docker compose rm -f caddy
 
-# Live-Logs beider Container
-docker compose logs -f
+# 3. Neuen ki-os-Stack pullen + rebuild (MCP joint proxy-Netzwerk)
+git pull
+docker compose up -d --build
 
-# Nur Bot
-docker compose logs -f bot
+# 4. Edge-Proxy startet jetzt sauber
+cd /opt/proxy && docker compose up -d
+docker compose logs -f caddy   # Cert-Issue zuschauen
+```
 
-# Nur Dashboard
-docker compose logs -f dashboard
+## Logs
 
-# Nur MCP
-docker compose logs -f mcp
+```bash
+cd /opt/ki-os && docker compose logs -f bot
+cd /opt/ki-os && docker compose logs -f dashboard
+cd /opt/ki-os && docker compose logs -f mcp
+
+# Edge-Proxy-Logs separat:
+cd /opt/proxy && docker compose logs -f caddy
 ```
 
 ## Status
 
-✅ Stack-Compose mit Bot + Dashboard + MCP
-✅ install.sh + update.sh mit Repo-Verifikation
-✅ MCP mit Bearer-Auth (Token aus /opt/mcp/.env)
-⏳ Caddy-Reverse-Proxy + HTTPS (vorerst nicht — direkter Port-Zugriff)
-⏳ Dashboard-Auth (vorerst keine)
+- ✅ Bot + Dashboard + MCP als ein Stack
+- ✅ Edge-Proxy ausgelagert (`Proxy`)
+- ✅ MCP via TLS-Domain `mcp.ki.wiki`
+- ✅ Block 1 Hardening (Rate-Limit, Audit-Log, Snapshots, Multi-Token)
+- ⏳ Dashboard-Auth (vorerst nur via VPS-IP)

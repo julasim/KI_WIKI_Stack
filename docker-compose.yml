@@ -1,12 +1,14 @@
 # KI-OS Stack — orchestriert Bot + Dashboard + MCP als ein Docker-Compose-Projekt.
+#
 # Erwartet Layout:
 #   /opt/bot/         (geklontes julasim/KI_WIKI_OS)
 #   /opt/dashboard/   (geklontes julasim/KI_WIKI_Dashboard)
 #   /opt/mcp/         (geklontes julasim/KI_WIKI_MCP)
 #   /opt/ki-os/       (dieses Repo — orchestriert die anderen)
 #
-# Alle Services sind im UI als ein Projekt sichtbar (ki-os).
-# Bot + MCP schreiben in Vault, Dashboard liest read-only.
+# TLS/Reverse-Proxy läuft NICHT mehr in diesem Stack — siehe /opt/proxy/
+# (julasim/Proxy). Container die externe URLs brauchen joinen das
+# externe `proxy`-Netzwerk und werden dort als reverse_proxy registriert.
 
 name: ki-os
 
@@ -20,11 +22,8 @@ services:
     environment:
       - VAULT_PATH=/vault
     volumes:
-      # Vault read-write für Bot
       - /opt/vault/KI_WIKI_Vault:/vault
-      # Whisper-Modell-Cache (überlebt Container-Rebuilds)
       - whisper-cache:/root/.cache/huggingface
-      # Lokaler Clone des GitHub-Backup-Repos (überlebt Restarts)
       - vault-backup:/vault-backup
     logging:
       driver: "json-file"
@@ -36,11 +35,11 @@ services:
     build: ../dashboard
     container_name: ki-os-dashboard
     restart: unless-stopped
-    # Container-INTERN auf 5000 (Next.js liest PORT env), Host exposed 5001.
+    # Direct exposed (Dashboard hat eigene Auth-Story, kein TLS via Edge nötig
+    # — wenn doch gewünscht: dashboard ins proxy-Netzwerk hängen + Caddyfile-Block).
     ports:
       - "5001:5000"
     volumes:
-      # Vault READ-ONLY — Dashboard schreibt nichts
       - /opt/vault/KI_WIKI_Vault:/vault:ro
     environment:
       - VAULT_PATH=/vault
@@ -58,8 +57,8 @@ services:
     build: ../mcp
     container_name: ki-os-mcp
     restart: unless-stopped
-    # Kein externer Port mehr — Caddy reverse-proxied von außen.
-    # (5002 ist nur intern im docker-Netzwerk erreichbar.)
+    # Kein externer Port — externe Verbindungen ausschließlich via Edge-Caddy
+    # (im /opt/proxy/-Stack) das im `proxy`-Netzwerk auf uns zugreift.
     expose:
       - "5002"
     env_file:
@@ -69,12 +68,12 @@ services:
       - MCP_HOST=0.0.0.0
       - MCP_PORT=5002
     volumes:
-      # Vault READ-WRITE — MCP-Server kann Notes/Tasks anlegen
       - /opt/vault/KI_WIKI_Vault:/vault
-      # Audit-Log persistent (JSONL aller Tool-Calls)
       - /opt/mcp-logs:/var/log/mcp
-      # Snapshots vor destruktiven Ops (tar.gz)
       - /opt/mcp-snapshots:/snapshots
+    networks:
+      - proxy        # für Edge-Caddy erreichbar
+      - default      # interne Container-Kommunikation
     logging:
       driver: "json-file"
       options:
@@ -87,31 +86,10 @@ services:
       retries: 3
       start_period: 10s
 
-  caddy:
-    image: caddy:2-alpine
-    container_name: ki-os-caddy
-    restart: unless-stopped
-    # Caddy lauscht INTERN auf 5080/5443 (5xxx-Konvention für unser Projekt).
-    # Docker mapped Standard-Web-Ports der Außenwelt auf diese internen Ports —
-    # so funktioniert Let's Encrypt HTTP-01-Challenge weiterhin und URLs bleiben sauber.
-    ports:
-      - "80:5080"        # World HTTP-80 → Caddy intern 5080 (ACME-Challenge)
-      - "443:5443"       # World HTTPS-443 → Caddy intern 5443
-      - "443:5443/udp"   # HTTP/3 (QUIC)
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data       # TLS-Zertifikate (PERSISTENT — sonst Re-Issue jedes Mal)
-      - caddy-config:/config
-    depends_on:
-      - mcp
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+networks:
+  proxy:
+    external: true   # vom Edge-Proxy-Stack verwaltet (siehe /opt/proxy/)
 
 volumes:
   whisper-cache:
   vault-backup:
-  caddy-data:
-  caddy-config:
