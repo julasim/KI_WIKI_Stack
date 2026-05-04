@@ -16,7 +16,9 @@ echo
 # ── Repo-Layout-Check ──
 [ -d ../bot ]       || { echo "❌ /opt/bot fehlt — git clone julasim/KI_WIKI_OS dorthin"; exit 1; }
 [ -d ../dashboard ] || { echo "❌ /opt/dashboard fehlt — git clone julasim/KI_WIKI_Dashboard dorthin"; exit 1; }
+[ -d ../mcp ]       || { echo "❌ /opt/mcp fehlt — git clone julasim/KI_WIKI_MCP dorthin"; exit 1; }
 [ -f ../bot/.env ]  || { echo "❌ /opt/bot/.env fehlt — Bot-Setup unvollständig"; exit 1; }
+[ -f ../mcp/.env ]  || { echo "❌ /opt/mcp/.env fehlt — MCP-Setup unvollständig (siehe .env.example)"; exit 1; }
 
 # ── Repo-Identität verifizieren (gegen versehentlichen Cross-Mount) ──
 verify_repo() {
@@ -33,6 +35,7 @@ verify_repo() {
 }
 verify_repo ../bot       "KI_WIKI_OS"
 verify_repo ../dashboard "KI_WIKI_Dashboard"
+verify_repo ../mcp       "KI_WIKI_MCP"
 verify_repo .            "KI_OS_Stack"
 
 # ── Pull alle 3 Repos ──
@@ -58,6 +61,7 @@ pull_repo() {
 
 pull_repo "Bot"       ../bot
 pull_repo "Dashboard" ../dashboard
+pull_repo "MCP"       ../mcp
 pull_repo "Stack"     .
 
 if [ "$ANY_CHANGED" = "0" ]; then
@@ -81,3 +85,4 @@ echo
 echo "✓ KI-OS Stack läuft."
 echo "  Bot:       (Telegram, kein HTTP)"
 echo "  Dashboard: http://$IP:3001"
+echo "  MCP:       http://$IP:3002/mcp  (health: /health)"

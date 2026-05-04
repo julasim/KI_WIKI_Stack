@@ -8,8 +8,10 @@
 #   cd /opt
 #   git clone https://github.com/julasim/KI_WIKI_OS.git bot
 #   git clone https://github.com/julasim/KI_WIKI_Dashboard.git dashboard
+#   git clone https://github.com/julasim/KI_WIKI_MCP.git mcp
 #   git clone https://github.com/julasim/KI_OS_Stack.git ki-os
 #   cd /opt/bot && cp .env.example .env && nano .env  # Token + User-ID
+#   cd /opt/mcp && cp .env.example .env && nano .env  # MCP_TOKEN setzen!
 #   cd /opt/ki-os && bash install.sh
 
 set -euo pipefail
@@ -23,7 +25,9 @@ echo
 # ── Pre-Checks ──
 [ -d ../bot ]       || { echo "❌ /opt/bot fehlt"; exit 1; }
 [ -d ../dashboard ] || { echo "❌ /opt/dashboard fehlt"; exit 1; }
+[ -d ../mcp ]       || { echo "❌ /opt/mcp fehlt"; exit 1; }
 [ -f ../bot/.env ]  || { echo "❌ /opt/bot/.env fehlt — bitte konfigurieren"; exit 1; }
+[ -f ../mcp/.env ]  || { echo "❌ /opt/mcp/.env fehlt — siehe /opt/mcp/.env.example"; exit 1; }
 
 # Vault-Pfad-Check
 VAULT_PATH="/opt/vault/KI_WIKI_Vault"
@@ -56,5 +60,6 @@ echo
 echo "✓ KI-OS Stack installiert."
 echo "  Bot:       läuft im Hintergrund, antwortet auf Telegram"
 echo "  Dashboard: http://$IP:3001"
+echo "  MCP:       http://$IP:3002/mcp  (health: /health)"
 echo
 echo "Update später mit: cd /opt/ki-os && bash update.sh"

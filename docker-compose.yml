@@ -1,11 +1,12 @@
-# KI-OS Stack — orchestriert Bot + Dashboard als ein Docker-Compose-Projekt.
+# KI-OS Stack — orchestriert Bot + Dashboard + MCP als ein Docker-Compose-Projekt.
 # Erwartet Layout:
 #   /opt/bot/         (geklontes julasim/KI_WIKI_OS)
 #   /opt/dashboard/   (geklontes julasim/KI_WIKI_Dashboard)
+#   /opt/mcp/         (geklontes julasim/KI_WIKI_MCP)
 #   /opt/ki-os/       (dieses Repo — orchestriert die anderen)
 #
-# Beide Services sind im UI als ein Projekt sichtbar (ki-os).
-# Bot schreibt in Vault, Dashboard liest read-only.
+# Alle Services sind im UI als ein Projekt sichtbar (ki-os).
+# Bot + MCP schreiben in Vault, Dashboard liest read-only.
 
 name: ki-os
 
@@ -49,6 +50,33 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  mcp:
+    build: ../mcp
+    container_name: ki-os-mcp
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    env_file:
+      - ../mcp/.env
+    environment:
+      - VAULT_PATH=/vault
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=3002
+    volumes:
+      # Vault READ-WRITE — MCP-Server kann Notes/Tasks anlegen
+      - /opt/vault/KI_WIKI_Vault:/vault
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:3002/health',timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   whisper-cache:
