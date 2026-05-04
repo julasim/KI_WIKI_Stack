@@ -9,7 +9,7 @@
 #   git clone https://github.com/julasim/KI_WIKI_OS.git bot
 #   git clone https://github.com/julasim/KI_WIKI_Dashboard.git dashboard
 #   git clone https://github.com/julasim/KI_WIKI_MCP.git mcp
-#   git clone https://github.com/julasim/KI_OS_Stack.git ki-os
+#   git clone https://github.com/julasim/KI_WIKI_Stack.git ki-os
 #   cd /opt/bot && cp .env.example .env && nano .env  # Token + User-ID
 #   cd /opt/mcp && cp .env.example .env && nano .env  # MCP_TOKEN setzen!
 #   cd /opt/ki-os && bash install.sh

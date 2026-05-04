@@ -36,7 +36,7 @@ verify_repo() {
 verify_repo ../bot       "KI_WIKI_OS"
 verify_repo ../dashboard "KI_WIKI_Dashboard"
 verify_repo ../mcp       "KI_WIKI_MCP"
-verify_repo .            "KI_OS_Stack"
+verify_repo .            "KI_WIKI_Stack"
 
 # ── Pull alle 3 Repos ──
 ANY_CHANGED=0
