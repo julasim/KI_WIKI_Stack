@@ -55,8 +55,10 @@ services:
     build: ../mcp
     container_name: ki-os-mcp
     restart: unless-stopped
-    ports:
-      - "3002:3002"
+    # Kein externer Port mehr — Caddy reverse-proxied von außen.
+    # (3002 ist nur intern im docker-Netzwerk erreichbar.)
+    expose:
+      - "3002"
     env_file:
       - ../mcp/.env
     environment:
@@ -78,6 +80,28 @@ services:
       retries: 3
       start_period: 10s
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: ki-os-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"        # für ACME HTTP-Challenge (Let's Encrypt)
+      - "443:443"      # HTTPS
+      - "443:443/udp"  # HTTP/3 (QUIC)
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data       # TLS-Zertifikate (PERSISTENT — sonst Re-Issue jedes Mal)
+      - caddy-config:/config
+    depends_on:
+      - mcp
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   whisper-cache:
   vault-backup:
+  caddy-data:
+  caddy-config:

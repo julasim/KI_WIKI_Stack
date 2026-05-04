@@ -1,0 +1,30 @@
+# KI-OS Caddyfile — Reverse-Proxy + automatisches Let's Encrypt TLS
+#
+# Domain: <vps-ip>.sslip.io  (sslip.io macht DNS-Magic, kein DNS-Eintrag nötig)
+# Wenn später eigene Domain: einfach Block tauschen oder ergänzen.
+
+# E-Mail für Let's Encrypt-Renewal-Benachrichtigungen
+{
+	email julius@sima.or.at
+}
+
+# MCP-Server hinter HTTPS
+76-13-10-79.sslip.io {
+	# Alle Requests an den internen MCP-Container weiterreichen
+	reverse_proxy mcp:3002 {
+		# Streamable-HTTP braucht Long-lived Connections für SSE
+		flush_interval -1
+	}
+
+	# Strukturierte Logs nach stdout (sieht man via `docker compose logs caddy`)
+	log {
+		output stdout
+		format console
+		level INFO
+	}
+}
+
+# (Optional später) Dashboard auch hinter HTTPS:
+# dashboard.<vps-ip>.sslip.io {
+#     reverse_proxy dashboard:3000
+# }
