@@ -84,5 +84,6 @@ IP=$(hostname -I | awk '{print $1}')
 echo
 echo "✓ KI-OS Stack läuft."
 echo "  Bot:       (Telegram, kein HTTP)"
-echo "  Dashboard: http://$IP:3001"
-echo "  MCP:       http://$IP:3002/mcp  (health: /health)"
+echo "  Dashboard: http://$IP:5001"
+echo "  MCP:       https://<your-domain>/mcp/   (über Caddy)"
+echo "             health: https://<your-domain>/health"

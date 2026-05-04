@@ -6,6 +6,10 @@
 # E-Mail für Let's Encrypt-Renewal-Benachrichtigungen
 {
 	email julius@sima.or.at
+	# Caddy lauscht INTERN auf 5080/5443 (Projekt-Konvention: alle Ports 5xxx).
+	# Docker mapped 80→5080 + 443→5443 für Außenwelt.
+	http_port 5080
+	https_port 5443
 	# Metrics auf globaler Ebene (war vorher in 'servers' nested → deprecated)
 	metrics
 }
@@ -33,7 +37,7 @@
 }
 
 (mcp_proxy) {
-	reverse_proxy mcp:3002 {
+	reverse_proxy mcp:5002 {
 		# Streamable-HTTP braucht Long-lived Connections für SSE
 		flush_interval -1
 		# X-Forwarded-For setzt Caddy automatisch.

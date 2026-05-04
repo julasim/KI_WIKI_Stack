@@ -4,7 +4,7 @@ Docker-Compose-Orchestrierung für **Bot + Dashboard** als ein Projekt.
 
 Im Docker-UI (Coolify/Portainer/etc.) erscheint das als ein Projekt **`ki-os`** mit 2 Containern:
 - `ki-os-bot` (Telegram-Bot)
-- `ki-os-dashboard` (Web-UI auf Port 3001)
+- `ki-os-dashboard` (Web-UI auf Port 5001)
 
 Beide Container sharen den gleichen Vault — Bot read-write, Dashboard read-only.
 
@@ -43,7 +43,7 @@ cd /opt/ki-os
 bash install.sh
 ```
 
-Dashboard ist danach erreichbar unter `http://<vps-ip>:3001`.
+Dashboard ist danach erreichbar unter `http://<vps-ip>:5001`.
 
 ## Update
 
@@ -103,16 +103,25 @@ bash update.sh
 - Build: `../dashboard/Dockerfile`
 - Volumes:
   - `/opt/vault/KI_WIKI_Vault:/vault:ro` (READ-ONLY)
-- Env: `VAULT_PATH=/vault`, `NODE_ENV=production`
-- Port: `3001:3000`
+- Env: `VAULT_PATH=/vault`, `NODE_ENV=production`, `PORT=5000`
+- Port: `5001:5000`
 
 ### `ki-os-mcp`
 - Build: `../mcp/Dockerfile`
 - Volumes:
   - `/opt/vault/KI_WIKI_Vault:/vault` (read-write)
-- Env: aus `/opt/mcp/.env` (`MCP_TOKEN`)
-- Port: `3002:3002`
+  - `/opt/mcp-logs:/var/log/mcp` (audit log)
+  - `/opt/mcp-snapshots:/snapshots` (backup snapshots)
+- Env: aus `/opt/mcp/.env` (`MCP_TOKEN`, `MCP_PORT=5002`)
+- Kein externer Port (nur intern via Caddy reverse-proxy)
 - Healthcheck: `/health`
+
+### `ki-os-caddy`
+- Image: `caddy:2-alpine`
+- Container-intern: HTTP `5080`, HTTPS `5443` (Projekt-Konvention 5xxx)
+- Host-exposed: `80` + `443` (Standard-Web-Ports für TLS-Issuance + saubere URLs)
+- Holt automatisch Let's-Encrypt-Cert je Domain
+- Volumes: `caddy-data` (Certs), `caddy-config`
 
 ## Migration vom alten Setup
 
