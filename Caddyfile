@@ -6,11 +6,8 @@
 # E-Mail für Let's Encrypt-Renewal-Benachrichtigungen
 {
 	email julius@sima.or.at
-
-	# Server-Header verschleiern (kein "Caddy" Banner)
-	servers {
-		metrics
-	}
+	# Metrics auf globaler Ebene (war vorher in 'servers' nested → deprecated)
+	metrics
 }
 
 # Gemeinsame Snippets (in Caddy v2 via Imports)
@@ -39,8 +36,8 @@
 	reverse_proxy mcp:3002 {
 		# Streamable-HTTP braucht Long-lived Connections für SSE
 		flush_interval -1
-		# Echte Client-IP an MCP weitergeben (für Rate-Limit + Audit)
-		header_up X-Forwarded-For {remote_host}
+		# X-Forwarded-For setzt Caddy automatisch.
+		# X-Real-IP zusätzlich (manche Apps lesen das statt XFF):
 		header_up X-Real-IP {remote_host}
 	}
 }
