@@ -6,14 +6,42 @@
 # E-Mail für Let's Encrypt-Renewal-Benachrichtigungen
 {
 	email julius@sima.or.at
+
+	# Server-Header verschleiern (kein "Caddy" Banner)
+	servers {
+		metrics
+	}
 }
 
 # MCP-Server hinter HTTPS
 76-13-10-79.sslip.io {
+	# === Security-Headers (Premium-Hardening) ===
+	header {
+		# HSTS: HTTPS-only für 1 Jahr, inkl. aller Subdomains
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		# Kein iframe/embed
+		X-Frame-Options "DENY"
+		# Browser darf Content-Type nicht raten
+		X-Content-Type-Options "nosniff"
+		# Referrer minimieren bei cross-origin
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Permissions-Policy: opt-out kontroversieller Features
+		Permissions-Policy "interest-cohort=(), geolocation=(), microphone=(), camera=()"
+		# CSP für JSON-API: keine Browser-Ausführung erlaubt
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+		# Server-Header entfernen (verbirgt Caddy-Version)
+		-Server
+		# X-Powered-By unterdrücken falls upstream gesetzt
+		-X-Powered-By
+	}
+
 	# Alle Requests an den internen MCP-Container weiterreichen
 	reverse_proxy mcp:3002 {
 		# Streamable-HTTP braucht Long-lived Connections für SSE
 		flush_interval -1
+		# Echte Client-IP an MCP weitergeben (für Rate-Limit + Audit)
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Real-IP {remote_host}
 	}
 
 	# Strukturierte Logs nach stdout (sieht man via `docker compose logs caddy`)

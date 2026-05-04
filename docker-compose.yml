@@ -68,6 +68,10 @@ services:
     volumes:
       # Vault READ-WRITE — MCP-Server kann Notes/Tasks anlegen
       - /opt/vault/KI_WIKI_Vault:/vault
+      # Audit-Log persistent (JSONL aller Tool-Calls)
+      - /opt/mcp-logs:/var/log/mcp
+      # Snapshots vor destruktiven Ops (tar.gz)
+      - /opt/mcp-snapshots:/snapshots
     logging:
       driver: "json-file"
       options:
