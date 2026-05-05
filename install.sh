@@ -28,8 +28,9 @@ echo
 [ -d ../bot ]       || { echo "❌ /opt/bot fehlt"; exit 1; }
 [ -d ../dashboard ] || { echo "❌ /opt/dashboard fehlt"; exit 1; }
 [ -d ../mcp ]       || { echo "❌ /opt/mcp fehlt"; exit 1; }
-[ -f ../bot/.env ]  || { echo "❌ /opt/bot/.env fehlt — bitte konfigurieren"; exit 1; }
-[ -f ../mcp/.env ]  || { echo "❌ /opt/mcp/.env fehlt — siehe /opt/mcp/.env.example"; exit 1; }
+[ -f ../bot/.env ]       || { echo "❌ /opt/bot/.env fehlt — bitte konfigurieren"; exit 1; }
+[ -f ../mcp/.env ]       || { echo "❌ /opt/mcp/.env fehlt — siehe /opt/mcp/.env.example"; exit 1; }
+[ -f ../dashboard/.env ] || { echo "❌ /opt/dashboard/.env fehlt — siehe /opt/dashboard/.env.example (NEXTAUTH_SECRET, DASHBOARD_USER_*)"; exit 1; }
 
 # Externes proxy-Netzwerk muss existieren (vom Edge-Proxy-Stack erstellt)
 if ! docker network inspect proxy >/dev/null 2>&1; then

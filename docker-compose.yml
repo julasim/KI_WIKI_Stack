@@ -35,10 +35,12 @@ services:
     build: ../dashboard
     container_name: ki-os-dashboard
     restart: unless-stopped
-    # Direct exposed (Dashboard hat eigene Auth-Story, kein TLS via Edge nötig
-    # — wenn doch gewünscht: dashboard ins proxy-Netzwerk hängen + Caddyfile-Block).
+    # Dashboard läuft jetzt mit Auth.js Login + TLS via Edge-Proxy.
+    # Direct-Port 5001 bleibt parallel für Lokalzugriff/Debugging.
     ports:
       - "5001:5000"
+    env_file:
+      - ../dashboard/.env
     volumes:
       - /opt/vault/KI_WIKI_Vault:/vault:ro
     environment:
@@ -47,6 +49,9 @@ services:
       - NEXT_TELEMETRY_DISABLED=1
       - PORT=5000
       - HOSTNAME=0.0.0.0
+    networks:
+      - proxy        # Edge-Caddy kann reverse-proxien
+      - default      # interne Container-Kommunikation
     logging:
       driver: "json-file"
       options:
