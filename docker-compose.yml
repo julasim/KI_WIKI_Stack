@@ -72,6 +72,10 @@ services:
       - VAULT_PATH=/vault
       - MCP_HOST=0.0.0.0
       - MCP_PORT=5002
+      # Wien-Zeit fuer recurring-Tasks-Logik (sonst springt nach 22:00 Wien
+      # `today` schon in den naechsten UTC-Tag und Daily-Tasks reaktivieren falsch)
+      - MCP_TIMEZONE=Europe/Vienna
+      - TZ=Europe/Vienna
     volumes:
       - /opt/vault/KI_WIKI_Vault:/vault
       - /opt/mcp-logs:/var/log/mcp
