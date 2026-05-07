@@ -80,6 +80,7 @@ services:
       - /opt/vault/KI_WIKI_Vault:/vault
       - /opt/mcp-logs:/var/log/mcp
       - /opt/mcp-snapshots:/snapshots
+      - /opt/mcp-oauth:/var/lib/mcp-oauth   # OAuth SQLite-DB (refresh-tokens, clients)
     networks:
       - proxy        # für Edge-Caddy erreichbar
       - default      # interne Container-Kommunikation
