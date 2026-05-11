@@ -145,6 +145,31 @@ mcp.ki.wiki {
 Container-Hostname in Caddyfile = `ki-os-mcp` (= container_name aus
 docker-compose.yml dieses Stacks).
 
+## Bot ↔ MCP: Interner Container-Hostname (nicht Public-URL)
+
+Bot und Dashboard sollen MCP **direkt** via Container-Hostname erreichen,
+**nicht** über die oeffentliche TLS-URL (Hairpin durch Caddy zurueck zum
+eigenen VPS). Hairpin-NAT funktioniert auf Docker-Bridge-Networks oft
+nicht — Connection-Refused beim Connect zur eigenen Public-IP.
+
+In `KI_WIKI_OS/.env` und `KI_WIKI_Dashboard/.env`:
+```
+MCP_URL=http://ki-os-mcp:5002/mcp/        # Bot
+MCP_BASE_URL=http://ki-os-mcp:5002/mcp/   # Dashboard
+```
+
+(Beide Container sind auf dem `default`-Netz und erreichen `ki-os-mcp`
+direkt — kein TLS, kein Caddy-Hop, schneller.)
+
+MCP's DNS-Rebinding-Protection-Whitelist enthaelt `ki-os-mcp` und
+`ki-os-mcp:5002` als Defaults (siehe `_DEFAULT_ALLOWED_HOSTS` in
+`KI_WIKI_MCP/ki_os_mcp/server.py`). Wenn du `MCP_ALLOWED_HOSTS`
+overrid'st: nicht vergessen diese mitzunehmen, sonst `421 Misdirected
+Request` von MCP.
+
+Externe Clients (Claude Desktop/Web, anderer Host) gehen weiterhin
+ueber `https://wiki-mcp.sima.business/mcp/` via Edge-Proxy.
+
 ## Migration vom alten Setup (Caddy war früher hier)
 
 > **Historischer Kontext:** Beschreibt die ursprüngliche Migration als Caddy aus dem Stack ausgelagert wurde. Pfadnamen unten reflektieren das damalige Layout (`/opt/ki-os/`, `/opt/proxy/`) — nicht das aktuelle (`/opt/KI_WIKI_Stack/`, `/opt/Proxy/`). Nur relevant wenn du wirklich noch das pre-Rename Setup laufen hast.
