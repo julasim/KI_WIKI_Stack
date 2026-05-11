@@ -97,3 +97,17 @@ cd /opt/Proxy && git pull && bash update.sh
 - Service-spezifischer Code (Python/TS) — gehört in `KI_WIKI_OS/`, `KI_WIKI_MCP/`, `KI_WIKI_Dashboard/`
 - Caddy-Config — gehört in `/opt/Proxy/Caddyfile` (separates Repo)
 - Service-spezifische .env-Werte — gehören in das jeweilige Repo
+
+## Edge-Proxy-Integration (KRITISCH)
+
+Dieser Stack ist Teil einer **Multi-Stack-Architektur** auf der VPS — `ki-os-dashboard` und `ki-os-mcp` werden über den zentralen **edge-caddy** (Repo `julasim/Proxy`, `/opt/Proxy/`) auf `wiki-dashboard.sima.business` bzw. `wiki-mcp.sima.business` exponiert. Edge-Caddy belegt VPS-Ports 80+443 — **kein anderer Stack** auf der Box darf eigene Caddy/Nginx-Container mit diesen Ports starten.
+
+**Andere Stacks die parallel laufen:** `bauos-app` (bauos.sima.business), `rag-api` (rag-os.sima.business). Alle teilen das externe Docker-Netz `proxy`.
+
+**Bei Verlust des edge-caddy (Container fehlt, 80/443 belegt von Fremdcontainer):**
+1. `docker ps -a` — wer mappt 80/443?
+2. Fremd-Caddy stoppen (`docker stop <name> && docker rm <name>`)
+3. `cd /opt/Proxy && docker compose up -d` — edge-caddy zurück
+4. Falls Stack-Container von dem Fremd-Caddy ein eigenes Netz nutzten: `docker network connect proxy <container>` falls nicht schon im `proxy`-Netz
+
+Die einzige legitime Caddy-Lokation auf der VPS ist `/opt/Proxy/`. App-Repos die ihren eigenen Caddy mitbringen (z.B. RAG_OS Standalone-Mode) MÜSSEN den im Edge-Mode-Deployment deaktivieren — Pattern: `docker-compose.standalone.yml` als Opt-In-Override (siehe RAG_OS-Repo).
