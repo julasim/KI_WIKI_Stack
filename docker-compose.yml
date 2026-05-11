@@ -1,12 +1,12 @@
 # KI-OS Stack — orchestriert Bot + Dashboard + MCP als ein Docker-Compose-Projekt.
 #
-# Erwartet Layout:
-#   /opt/bot/         (geklontes julasim/KI_WIKI_OS)
-#   /opt/dashboard/   (geklontes julasim/KI_WIKI_Dashboard)
-#   /opt/mcp/         (geklontes julasim/KI_WIKI_MCP)
-#   /opt/ki-os/       (dieses Repo — orchestriert die anderen)
+# Erwartet Layout (Geschwister-Verzeichnisse):
+#   ../KI_WIKI_OS/         (geklontes julasim/KI_WIKI_OS)
+#   ../KI_WIKI_Dashboard/  (geklontes julasim/KI_WIKI_Dashboard)
+#   ../KI_WIKI_MCP/        (geklontes julasim/KI_WIKI_MCP)
+#   (dieses Repo: KI_WIKI_Stack — orchestriert die anderen)
 #
-# TLS/Reverse-Proxy läuft NICHT mehr in diesem Stack — siehe /opt/proxy/
+# TLS/Reverse-Proxy läuft NICHT mehr in diesem Stack — siehe ../../Proxy/
 # (julasim/Proxy). Container die externe URLs brauchen joinen das
 # externe `proxy`-Netzwerk und werden dort als reverse_proxy registriert.
 
@@ -14,11 +14,11 @@ name: ki-os
 
 services:
   bot:
-    build: ../bot
+    build: ../KI_WIKI_OS
     container_name: ki-os-bot
     restart: unless-stopped
     env_file:
-      - ../bot/.env
+      - ../KI_WIKI_OS/.env
     environment:
       - VAULT_PATH=/vault
     volumes:
@@ -32,7 +32,7 @@ services:
         max-file: "3"
 
   dashboard:
-    build: ../dashboard
+    build: ../KI_WIKI_Dashboard
     container_name: ki-os-dashboard
     restart: unless-stopped
     # Dashboard läuft jetzt mit Auth.js Login + TLS via Edge-Proxy.
@@ -40,7 +40,7 @@ services:
     ports:
       - "5001:5000"
     env_file:
-      - ../dashboard/.env
+      - ../KI_WIKI_Dashboard/.env
     volumes:
       - /opt/vault/KI_WIKI_Vault:/vault:ro
     environment:
@@ -59,15 +59,15 @@ services:
         max-file: "3"
 
   mcp:
-    build: ../mcp
+    build: ../KI_WIKI_MCP
     container_name: ki-os-mcp
     restart: unless-stopped
     # Kein externer Port — externe Verbindungen ausschließlich via Edge-Caddy
-    # (im /opt/proxy/-Stack) das im `proxy`-Netzwerk auf uns zugreift.
+    # (im ../../Proxy/-Stack) das im `proxy`-Netzwerk auf uns zugreift.
     expose:
       - "5002"
     env_file:
-      - ../mcp/.env
+      - ../KI_WIKI_MCP/.env
     environment:
       - VAULT_PATH=/vault
       - MCP_HOST=0.0.0.0
@@ -98,7 +98,7 @@ services:
 
 networks:
   proxy:
-    external: true   # vom Edge-Proxy-Stack verwaltet (siehe /opt/proxy/)
+    external: true   # vom Edge-Proxy-Stack verwaltet (siehe ../../Proxy/)
 
 volumes:
   whisper-cache:

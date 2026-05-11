@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # update.sh — KI-OS Stack komplett aktualisieren
-# Pullt bot + dashboard + stack, baut Container neu, startet.
+# Pullt KI_WIKI_OS + KI_WIKI_Dashboard + KI_WIKI_MCP + Stack, baut Container neu, startet.
 #
 # Verwendung auf VPS:
-#   cd /opt/ki-os && bash update.sh
+#   cd /opt/KI_WIKI_Stack && bash update.sh
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -14,11 +14,11 @@ echo "════════════════════════�
 echo
 
 # ── Repo-Layout-Check ──
-[ -d ../bot ]       || { echo "❌ /opt/bot fehlt — git clone julasim/KI_WIKI_OS dorthin"; exit 1; }
-[ -d ../dashboard ] || { echo "❌ /opt/dashboard fehlt — git clone julasim/KI_WIKI_Dashboard dorthin"; exit 1; }
-[ -d ../mcp ]       || { echo "❌ /opt/mcp fehlt — git clone julasim/KI_WIKI_MCP dorthin"; exit 1; }
-[ -f ../bot/.env ]  || { echo "❌ /opt/bot/.env fehlt — Bot-Setup unvollständig"; exit 1; }
-[ -f ../mcp/.env ]  || { echo "❌ /opt/mcp/.env fehlt — MCP-Setup unvollständig (siehe .env.example)"; exit 1; }
+[ -d ../KI_WIKI_OS ]        || { echo "❌ ../KI_WIKI_OS fehlt — git clone julasim/KI_WIKI_OS dorthin"; exit 1; }
+[ -d ../KI_WIKI_Dashboard ] || { echo "❌ ../KI_WIKI_Dashboard fehlt — git clone julasim/KI_WIKI_Dashboard dorthin"; exit 1; }
+[ -d ../KI_WIKI_MCP ]       || { echo "❌ ../KI_WIKI_MCP fehlt — git clone julasim/KI_WIKI_MCP dorthin"; exit 1; }
+[ -f ../KI_WIKI_OS/.env ]   || { echo "❌ ../KI_WIKI_OS/.env fehlt — Bot-Setup unvollständig"; exit 1; }
+[ -f ../KI_WIKI_MCP/.env ]  || { echo "❌ ../KI_WIKI_MCP/.env fehlt — MCP-Setup unvollständig (siehe .env.example)"; exit 1; }
 
 # ── Repo-Identität verifizieren (gegen versehentlichen Cross-Mount) ──
 verify_repo() {
@@ -33,10 +33,10 @@ verify_repo() {
         exit 1
     fi
 }
-verify_repo ../bot       "KI_WIKI_OS"
-verify_repo ../dashboard "KI_WIKI_Dashboard"
-verify_repo ../mcp       "KI_WIKI_MCP"
-verify_repo .            "KI_WIKI_Stack"
+verify_repo ../KI_WIKI_OS        "KI_WIKI_OS"
+verify_repo ../KI_WIKI_Dashboard "KI_WIKI_Dashboard"
+verify_repo ../KI_WIKI_MCP       "KI_WIKI_MCP"
+verify_repo .                    "KI_WIKI_Stack"
 
 # ── Pull alle 3 Repos ──
 ANY_CHANGED=0
@@ -59,9 +59,9 @@ pull_repo() {
     echo
 }
 
-pull_repo "Bot"       ../bot
-pull_repo "Dashboard" ../dashboard
-pull_repo "MCP"       ../mcp
+pull_repo "Bot"       ../KI_WIKI_OS
+pull_repo "Dashboard" ../KI_WIKI_Dashboard
+pull_repo "MCP"       ../KI_WIKI_MCP
 pull_repo "Stack"     .
 
 if [ "$ANY_CHANGED" = "0" ]; then
